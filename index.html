@@ -10,23 +10,27 @@ main{max-width:760px;margin:0 auto;padding:14px}
 h1{font-size:20px;margin:0 0 10px}h1 b{color:var(--ac)}h2{font-size:16px;margin:0 0 4px}
 .mu{color:var(--mu);font-size:13px}
 .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
-label{font-size:12px;color:var(--mu);display:block}
-input{width:100%;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+label{font-size:12px;color:var(--mu);display:block;margin-top:6px}
+input,textarea{width:100%;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
 .big{font-size:38px;font-weight:700;color:var(--ac)}
 table{width:100%;border-collapse:collapse}td,th{padding:7px 4px;border-bottom:1px solid var(--bd);text-align:right}td:first-child,th:first-child{text-align:left}
 .bm{display:inline-block;background:var(--ac);color:#fff;padding:10px 18px;border-radius:10px;font-weight:700;text-decoration:none;cursor:grab}
 button{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit}
 .row{display:flex;justify-content:space-between;padding:4px 0}
+summary{cursor:pointer}
 </style></head><body><main>
 <h1>Home<b>Scope</b> <button onclick="var r=document.documentElement;r.setAttribute('data-theme',getComputedStyle(r).colorScheme=='dark'?'light':'dark')" style="float:right">◐</button></h1>
 
-<div class="card" id="setup"><h2>One-time setup</h2>
-<p class="mu">Drag this button up to your bookmarks bar:</p>
+<details class="card" id="setup" open><summary><b>One-time setup</b></summary>
+<p class="mu">Drag this button to your bookmarks bar (Ctrl+Shift+B shows the bar):</p>
 <p><a class="bm" id="bml" href="#" onclick="return false">HomeScope</a></p>
-<p class="mu">Then open any house on Zillow, Redfin, Realtor.com or Homes.com and click it. This page opens with the house filled in. Can't see your bookmarks bar? Press Ctrl+Shift+B (Cmd+Shift+B on Mac).</p></div>
+<p class="mu">Then open a house on Zillow and click it. Redfin, Realtor.com and Homes.com are best-effort.</p>
+<p class="mu">If this page doesn't fill in: click the bookmark again, then paste (Ctrl+V) here. The bookmark copies the house info.</p>
+<textarea id="pst" rows="2" placeholder="Paste here" oninput="pasted(this)"></textarea><div class="mu" id="perr"></div>
+<label>HomeScope link used by the bookmark (change only if the bookmark opens the wrong page)</label><input id="app" oninput="mk()">
+</details>
 
-<div class="card"><h2 id="addr">No house yet — click the bookmark on a listing, or type below</h2>
-<div class="mu" id="sub"></div>
+<div class="card"><h2 id="addr"></h2><div class="mu" id="sub"></div>
 <div class="g" style="margin-top:12px">
 <div><label>Price $</label><input id="price" type="number"></div>
 <div><label>Down payment %</label><input id="dp" type="number" step="any"></div>
@@ -36,18 +40,15 @@ button{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-
 <div><label>Insurance $ / year</label><input id="ins" type="number"></div>
 <div><label>HOA $ / month</label><input id="hoa" type="number"></div>
 <div><label>Extra payment $ / month</label><input id="ex" type="number"></div></div>
-<p class="mu">Rate, tax and insurance start as <b>placeholder assumptions</b>, not live quotes. Replace them with your lender's numbers or the current average from freddiemac.com/pmms.</p></div>
+<p class="mu" id="nt"></p></div>
 
-<div class="card"><div class="mu">Estimated monthly payment</div><div class="big" id="tot"></div>
-<div id="brk"></div></div>
+<div class="card"><div class="mu">Estimated monthly payment</div><div class="big" id="tot"></div><div id="brk"></div></div>
 
-<div class="card"><h2>How fast could you own it?</h2>
-<table id="pay"></table>
-<p class="mu" id="xtra"></p></div>
+<div class="card"><h2>How fast could you own it?</h2><table id="pay"></table><p class="mu" id="xtra"></p></div>
 <p class="mu">Estimates only, not financial advice. Asking price is not an appraisal or sale price.</p>
 </main>
 <script>
-var D={addr:'',sub:'',price:450000,dp:20,rate:6.5,term:30,tax:1.1,ins:1800,hoa:0,ex:0},S=D,I=['price','dp','rate','term','tax','ins','hoa','ex'];
+var APP0='https://claude.ai/artifact/BYraP7TFZYrMrQSNA3pCHz',D={addr:'',sub:'',notes:[],price:450000,dp:20,rate:6.5,term:30,tax:1.1,ins:1800,hoa:0,ex:0},S=D,I=['price','dp','rate','term','tax','ins','hoa','ex'];
 try{S=Object.assign({},D,JSON.parse(localStorage.getItem('hs')||'{}'))}catch(e){}
 function $(i){return document.getElementById(i)}
 function m(x){return isFinite(x)?'$'+Math.round(x).toLocaleString():'—'}
@@ -62,11 +63,40 @@ $('brk').innerHTML=row('Principal & interest',m(pi))+row('Property tax',m(tx))+r
 var base=pmt(L,S.rate,360),bi=base*360-L,h='<tr><th>Pay off in</th><th>P&I / mo</th><th>Extra vs 30y</th><th>Interest saved</th></tr>';
 [5,10,15,20,30].forEach(function(y){var p=pmt(L,S.rate,y*12);h+='<tr><td>'+y+' years</td><td>'+m(p)+'</td><td>'+(y==30?'—':'+'+m(p-base))+'</td><td>'+(y==30?'—':m(bi-(p*y*12-L)))+'</td></tr>'});
 $('pay').innerHTML=h;var b0=months(L,S.rate,n,0);
-$('xtra').textContent=S.ex?'Your extra '+m(S.ex)+'/mo saves about '+m(b0.ti-a.ti)+' interest and '+((b0.k-a.k)/12).toFixed(1)+' years.':'Try typing an extra monthly amount above to see how much time and interest it saves.'}
-function show(){$('addr').textContent=S.addr||'No house yet — click the bookmark on a listing, or type below';$('sub').textContent=S.sub||'';I.forEach(function(k){$(k).value=S[k]})}
+$('xtra').textContent=S.ex?'Your extra '+m(S.ex)+'/mo saves about '+m(b0.ti-a.ti)+' interest and '+((b0.k-a.k)/12).toFixed(1)+' years.':'Try an extra monthly amount above to see the time and interest it saves.'}
+function show(){$('addr').textContent=S.addr||'No house yet: click the bookmark on a listing, or type below';$('sub').textContent=S.sub||'';I.forEach(function(k){$(k).value=S[k]});
+$('nt').textContent=(S.notes&&S.notes.length)?S.notes.join(' '):'Rate, tax and insurance are placeholder assumptions, not live quotes. Replace them with your lender\u2019s numbers.'}
+function apply(h){var nt=[],p=parseFloat(h.price);
+S.addr=h.addr||S.addr;
+S.sub=[h.beds&&h.beds+' bd',h.baths&&h.baths+' ba',h.sqft&&Number(h.sqft).toLocaleString()+' sqft',h.ptype,h.year&&'built '+h.year].filter(Boolean).join(' \u00b7 ');
+if(p){S.price=p;nt.push('Price is the asking price from '+(h.source||'the listing')+', not an appraisal.')}
+if(h.lastSold)nt.push('Last sold for '+m(h.lastSold)+(h.lastSoldDate?' on '+h.lastSoldDate:'')+' (as listed).');
+if(h.taxRate){S.tax=h.taxRate;nt.push('Property tax '+h.taxRate+'% is the listing site\u2019s estimate.')}
+if(h.rate){S.rate=h.rate;nt.push('Rate '+h.rate+'% is the 30-year rate shown on the listing page'+(h.rateDate?' (updated '+new Date(h.rateDate).toLocaleDateString()+')':'')+'. It is not a lender quote.')}
+if(h.insMo){S.ins=Math.round(h.insMo*12);nt.push('Insurance is the listing site\u2019s estimate.')}
+S.hoa=parseFloat(h.hoa)||0;S.notes=nt;show();calc();$('setup').open=false}
+function pasted(t){try{apply(JSON.parse(t.value));$('perr').textContent='';t.value=''}catch(e){$('perr').textContent='Could not read that. Click the bookmark on the listing again, then paste.'}}
+function fromHash(){var x=location.hash;if(x.indexOf('#hs')!==0)return;try{var hx=x.slice(3),b='';for(var i=0;i<hx.length;i+=2)b+=String.fromCharCode(parseInt(hx.substr(i,2),16));apply(JSON.parse(decodeURIComponent(escape(b))))}catch(e){}}
+function HS(APP){
+var d={source:location.hostname,url:location.href},t=document.body.innerText||"",m,P,q=function(s){return document.querySelector(s)},N=function(v){var x=parseFloat(String(v).replace(/[^\d.]/g,""));return isNaN(x)?"":x};
+try{var c=JSON.parse(JSON.parse(q("#__NEXT_DATA__").textContent).props.pageProps.componentProps.gdpClientCache);P=c[Object.keys(c)[0]].property}catch(e){}
+if(P){var a=P.address||{},R=P.resoFacts||{},r=P.mortgageZHLRates&&P.mortgageZHLRates.thirtyYearFixedBucket;d.addr=a.streetAddress+", "+a.city+", "+a.state+" "+a.zipcode;d.price=P.price;d.beds=P.bedrooms;d.baths=P.bathrooms;d.sqft=P.livingArea||P.livingAreaValue;d.ptype=String(P.homeType||"").replace(/_/g," ").toLowerCase();d.year=R.yearBuilt;d.hoa=N(P.monthlyHoaFee||R.hoaFeeTotal);d.taxRate=P.propertyTaxRate;if(r){d.rate=r.rate;d.rateDate=r.lastUpdated};d.lastSold=P.lastSoldPrice;d.lastSoldDate=P.dateSoldString;if(P.hdpUrl)d.url="https://"+location.hostname+P.hdpUrl};
+if(!d.price){document.querySelectorAll('script[type="application/ld+json"]').forEach(function(s){try{var j=JSON.parse(s.textContent);(Array.isArray(j)?j:j["@graph"]||[j]).forEach(function(o){var f=(o.offers&&o.offers.itemOffered)||o,a=f.address||o.address;if(a&&!d.addr)d.addr=typeof a=="string"?a:[a.streetAddress,a.addressLocality,a.addressRegion,a.postalCode].filter(Boolean).join(", ");if(o.offers&&o.offers.price&&!d.price)d.price=o.offers.price;if(f.numberOfBedrooms&&!d.beds)d.beds=f.numberOfBedrooms;if(f.floorSize&&!d.sqft)d.sqft=f.floorSize.value})}catch(e){}})};
+var pe=q("[data-testid=price]");if(!d.price&&pe)d.price=N(pe.innerText);
+if(!d.price&&(m=t.match(/\$\s?(\d{1,3}(?:,\d{3})+)/)))d.price=N(m[1]);
+if(!d.beds&&(m=t.match(/(\d+(?:\.\d+)?)\s*(?:beds?|bd)\b/i)))d.beds=m[1];
+if(!d.baths&&(m=t.match(/(\d+(?:\.\d+)?)\s*(?:baths?|ba)\b/i)))d.baths=m[1];
+if(!d.sqft&&(m=t.match(/([\d,]{3,6})\s*(?:sq\.?\s?ft|sqft)/i)))d.sqft=N(m[1]);
+if(!d.addr){var og=q('meta[property="og:title"]');d.addr=((og&&og.content)||document.title).split("|")[0].split(" - ")[0].trim()};
+if(m=t.match(/Home insurance\s*\$([\d,]+)/i))d.insMo=N(m[1]);
+for(var k in d)if(d[k]==null||d[k]==="")delete d[k];
+var s=JSON.stringify(d),h="",u=unescape(encodeURIComponent(s));for(var i=0;i<u.length;i++)h+=("0"+u.charCodeAt(i).toString(16)).slice(-2);
+try{navigator.clipboard.writeText(s).catch(function(){})}catch(e){};
+var w=window.open(APP+"#hs"+h,"homescope"),n=0,iv=setInterval(function(){try{w.postMessage({homescope:d},"*")}catch(e){};if(++n>20)clearInterval(iv)},500);
+}
+function mk(){var a=$('app').value||APP0;$('bml').href='javascript:'+encodeURIComponent('('+HS.toString().replace(/\s*\n\s*/g,'')+')('+JSON.stringify(a)+')')}
 I.forEach(function(k){$(k).addEventListener('input',calc)});
-window.addEventListener('message',function(e){var h=e.data&&e.data.homescope;if(!h)return;var p=parseFloat(h.price);S.addr=h.addr||'';S.sub=[h.beds&&h.beds+' bd',h.baths&&h.baths+' ba',h.sqft&&Number(h.sqft).toLocaleString()+' sqft',h.ptype,'asking price from '+h.source+' (verify)'].filter(Boolean).join(' · ');if(p)S.price=p;show();calc();document.getElementById('setup').style.display='none';try{e.source.postMessage({homescopeAck:1},'*')}catch(x){}});
-var code='(function(){var d={source:location.hostname},t=document.body.innerText||"",m;try{document.querySelectorAll(\'script[type="application/ld+json"]\').forEach(function(s){try{var j=JSON.parse(s.textContent);(Array.isArray(j)?j:j["@graph"]||[j]).forEach(function(o){if(o&&o.address&&!d.addr){var a=o.address;d.addr=typeof a=="string"?a:[a.streetAddress,a.addressLocality,a.addressRegion,a.postalCode].filter(Boolean).join(", ")}})}catch(e){}})}catch(e){}if(!d.addr){var og=document.querySelector(\'meta[property="og:title"]\');d.addr=((og&&og.content)||document.title).split("|")[0].split(" - ")[0].trim()}if(m=t.match(/\\$\\s?(\\d{1,3}(?:,\\d{3})+)/))d.price=m[1].replace(/,/g,"");if(m=t.match(/(\\d+(?:\\.\\d+)?)\\s*(?:beds?|bd|bedrooms?)\\b/i))d.beds=m[1];if(m=t.match(/(\\d+(?:\\.\\d+)?)\\s*(?:baths?|ba|bathrooms?)\\b/i))d.baths=m[1];if(m=t.match(/([\\d,]{3,6})\\s*(?:sq\\.?\\s?ft|sqft)/i))d.sqft=m[1].replace(/,/g,"");if(m=t.match(/(Single[- ]Family|Condo|Townhouse|Townhome|Multi[- ]Family)/i))d.ptype=m[1];var w=window.open("'+location.origin+location.pathname+'","homescope"),c=0,i=setInterval(function(){try{w.postMessage({homescope:d},"*")}catch(e){}if(++c>60)clearInterval(i)},500);window.addEventListener("message",function(e){if(e.data&&e.data.homescopeAck)clearInterval(i)})})();';
-$('bml').href='javascript:'+encodeURIComponent(code);
-show();calc();
+window.addEventListener('message',function(e){if(e.data&&e.data.homescope)apply(e.data.homescope)});
+window.addEventListener('hashchange',fromHash);
+$('app').value=APP0;mk();show();calc();fromHash();
 </script></body></html>

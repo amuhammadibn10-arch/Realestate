@@ -1,0 +1,72 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>HomeScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--tx:#18202e;--mu:#667085;--bd:#e2e6ee;--ac:#2563eb;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0e1420;--card:#171f2f;--tx:#e8ecf4;--mu:#93a0b8;--bd:#273148;--ac:#5b8cff;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#0e1420;--card:#171f2f;--tx:#e8ecf4;--mu:#93a0b8;--bd:#273148;--ac:#5b8cff;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,sans-serif}
+main{max-width:760px;margin:0 auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:14px}
+h1{font-size:20px;margin:0 0 10px}h1 b{color:var(--ac)}h2{font-size:16px;margin:0 0 4px}
+.mu{color:var(--mu);font-size:13px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+label{font-size:12px;color:var(--mu);display:block}
+input{width:100%;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.big{font-size:38px;font-weight:700;color:var(--ac)}
+table{width:100%;border-collapse:collapse}td,th{padding:7px 4px;border-bottom:1px solid var(--bd);text-align:right}td:first-child,th:first-child{text-align:left}
+.bm{display:inline-block;background:var(--ac);color:#fff;padding:10px 18px;border-radius:10px;font-weight:700;text-decoration:none;cursor:grab}
+button{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit}
+.row{display:flex;justify-content:space-between;padding:4px 0}
+</style></head><body><main>
+<h1>Home<b>Scope</b> <button onclick="var r=document.documentElement;r.setAttribute('data-theme',getComputedStyle(r).colorScheme=='dark'?'light':'dark')" style="float:right">◐</button></h1>
+
+<div class="card" id="setup"><h2>One-time setup</h2>
+<p class="mu">Drag this button up to your bookmarks bar:</p>
+<p><a class="bm" id="bml" href="#" onclick="return false">HomeScope</a></p>
+<p class="mu">Then open any house on Zillow, Redfin, Realtor.com or Homes.com and click it. This page opens with the house filled in. Can't see your bookmarks bar? Press Ctrl+Shift+B (Cmd+Shift+B on Mac).</p></div>
+
+<div class="card"><h2 id="addr">No house yet — click the bookmark on a listing, or type below</h2>
+<div class="mu" id="sub"></div>
+<div class="g" style="margin-top:12px">
+<div><label>Price $</label><input id="price" type="number"></div>
+<div><label>Down payment %</label><input id="dp" type="number" step="any"></div>
+<div><label>Interest rate %</label><input id="rate" type="number" step="any"></div>
+<div><label>Years</label><input id="term" type="number"></div>
+<div><label>Property tax % / year</label><input id="tax" type="number" step="any"></div>
+<div><label>Insurance $ / year</label><input id="ins" type="number"></div>
+<div><label>HOA $ / month</label><input id="hoa" type="number"></div>
+<div><label>Extra payment $ / month</label><input id="ex" type="number"></div></div>
+<p class="mu">Rate, tax and insurance start as <b>placeholder assumptions</b>, not live quotes. Replace them with your lender's numbers or the current average from freddiemac.com/pmms.</p></div>
+
+<div class="card"><div class="mu">Estimated monthly payment</div><div class="big" id="tot"></div>
+<div id="brk"></div></div>
+
+<div class="card"><h2>How fast could you own it?</h2>
+<table id="pay"></table>
+<p class="mu" id="xtra"></p></div>
+<p class="mu">Estimates only, not financial advice. Asking price is not an appraisal or sale price.</p>
+</main>
+<script>
+var D={addr:'',sub:'',price:450000,dp:20,rate:6.5,term:30,tax:1.1,ins:1800,hoa:0,ex:0},S=D,I=['price','dp','rate','term','tax','ins','hoa','ex'];
+try{S=Object.assign({},D,JSON.parse(localStorage.getItem('hs')||'{}'))}catch(e){}
+function $(i){return document.getElementById(i)}
+function m(x){return isFinite(x)?'$'+Math.round(x).toLocaleString():'—'}
+function pmt(L,r,n){r/=1200;return L<=0?0:r==0?L/n:L*r/(1-Math.pow(1+r,-n))}
+function months(L,rate,n,ex){var r=rate/1200,p=pmt(L,rate,n),b=L,k=0,ti=0;while(b>0.005&&k<n+12){var i=b*r,pr=Math.min(b,p-i+ex);ti+=i;b-=pr;k++}return{k:k,ti:ti}}
+function calc(){I.forEach(function(k){S[k]=parseFloat($(k).value)||0});try{localStorage.setItem('hs',JSON.stringify(S))}catch(e){}
+var P=S.price,dpd=P*S.dp/100,L=P-dpd,n=(S.term||30)*12,pi=pmt(L,S.rate,n),tx=P*S.tax/1200,ins=S.ins/12,pmi=S.dp<20?L*0.006/12:0,tot=pi+tx+ins+pmi+S.hoa+S.ex;
+$('tot').textContent=m(tot);
+var a=months(L,S.rate,n,S.ex),d=new Date();d.setMonth(d.getMonth()+a.k);
+function row(t,v){return '<div class="row"><span>'+t+'</span><b>'+v+'</b></div>'}
+$('brk').innerHTML=row('Principal & interest',m(pi))+row('Property tax',m(tx))+row('Insurance',m(ins))+(pmi?row('PMI (est. 0.6%/yr, under 20% down)',m(pmi)):'')+(S.hoa?row('HOA',m(S.hoa)):'')+(S.ex?row('Extra principal',m(S.ex)):'')+'<hr>'+row('Cash needed up front (down + ~3% closing)',m(dpd+P*0.03))+row('Loan amount',m(L))+row('Total interest',m(a.ti))+row('Paid off',d.toLocaleDateString(undefined,{month:'short',year:'numeric'})+' ('+(a.k/12).toFixed(1)+' yrs)');
+var base=pmt(L,S.rate,360),bi=base*360-L,h='<tr><th>Pay off in</th><th>P&I / mo</th><th>Extra vs 30y</th><th>Interest saved</th></tr>';
+[5,10,15,20,30].forEach(function(y){var p=pmt(L,S.rate,y*12);h+='<tr><td>'+y+' years</td><td>'+m(p)+'</td><td>'+(y==30?'—':'+'+m(p-base))+'</td><td>'+(y==30?'—':m(bi-(p*y*12-L)))+'</td></tr>'});
+$('pay').innerHTML=h;var b0=months(L,S.rate,n,0);
+$('xtra').textContent=S.ex?'Your extra '+m(S.ex)+'/mo saves about '+m(b0.ti-a.ti)+' interest and '+((b0.k-a.k)/12).toFixed(1)+' years.':'Try typing an extra monthly amount above to see how much time and interest it saves.'}
+function show(){$('addr').textContent=S.addr||'No house yet — click the bookmark on a listing, or type below';$('sub').textContent=S.sub||'';I.forEach(function(k){$(k).value=S[k]})}
+I.forEach(function(k){$(k).addEventListener('input',calc)});
+window.addEventListener('message',function(e){var h=e.data&&e.data.homescope;if(!h)return;var p=parseFloat(h.price);S.addr=h.addr||'';S.sub=[h.beds&&h.beds+' bd',h.baths&&h.baths+' ba',h.sqft&&Number(h.sqft).toLocaleString()+' sqft',h.ptype,'asking price from '+h.source+' (verify)'].filter(Boolean).join(' · ');if(p)S.price=p;show();calc();document.getElementById('setup').style.display='none';try{e.source.postMessage({homescopeAck:1},'*')}catch(x){}});
+var code='(function(){var d={source:location.hostname},t=document.body.innerText||"",m;try{document.querySelectorAll(\'script[type="application/ld+json"]\').forEach(function(s){try{var j=JSON.parse(s.textContent);(Array.isArray(j)?j:j["@graph"]||[j]).forEach(function(o){if(o&&o.address&&!d.addr){var a=o.address;d.addr=typeof a=="string"?a:[a.streetAddress,a.addressLocality,a.addressRegion,a.postalCode].filter(Boolean).join(", ")}})}catch(e){}})}catch(e){}if(!d.addr){var og=document.querySelector(\'meta[property="og:title"]\');d.addr=((og&&og.content)||document.title).split("|")[0].split(" - ")[0].trim()}if(m=t.match(/\\$\\s?(\\d{1,3}(?:,\\d{3})+)/))d.price=m[1].replace(/,/g,"");if(m=t.match(/(\\d+(?:\\.\\d+)?)\\s*(?:beds?|bd|bedrooms?)\\b/i))d.beds=m[1];if(m=t.match(/(\\d+(?:\\.\\d+)?)\\s*(?:baths?|ba|bathrooms?)\\b/i))d.baths=m[1];if(m=t.match(/([\\d,]{3,6})\\s*(?:sq\\.?\\s?ft|sqft)/i))d.sqft=m[1].replace(/,/g,"");if(m=t.match(/(Single[- ]Family|Condo|Townhouse|Townhome|Multi[- ]Family)/i))d.ptype=m[1];var w=window.open("'+location.origin+location.pathname+'","homescope"),c=0,i=setInterval(function(){try{w.postMessage({homescope:d},"*")}catch(e){}if(++c>60)clearInterval(i)},500);window.addEventListener("message",function(e){if(e.data&&e.data.homescopeAck)clearInterval(i)})})();';
+$('bml').href='javascript:'+encodeURIComponent(code);
+show();calc();
+</script></body></html>
